@@ -1,0 +1,22 @@
+[package]
+name = "neat"
+version = "1.0.0"
+authors = ["planet0104 <planet0104@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+rand = "0.6.5"
+
+[dependencies.image]
+version = "0.21.1"
+default-features = false
+optional = true
+
+[dependencies.imageproc]
+version = "0.18.0"
+default-features = false
+optional = true
+
+[features]
+default = ["draw_net"]
+draw_net = ["image", "imageproc"]
