@@ -2,7 +2,7 @@ use super::genes::{Genome, Innovation, LinkGene, NeuronGene};
 use super::params;
 use super::phenotype::NeuralNet;
 use super::species::Species;
-use super::utils::{random_float, random_int, random_usize};
+use super::utils::{random, rand_int, rand_usize};
 
 // Desc：用于实现的进化算法类
 pub struct GA {
@@ -133,7 +133,7 @@ impl GA {
                             //如果大于1，则可以使用杂交操作
                             //孵化1
                             let g1 = self.species[spc].spawn(&self.genomes);
-                            if random_float() < params::CROSSOVER_RATE {
+                            if (random() as f32) < params::CROSSOVER_RATE {
                                 //孵化2, 保证它不是g1
                                 let mut g2 = self.species[spc].spawn(&self.genomes);
                                 let mut num_attempts = 5;
@@ -262,7 +262,7 @@ impl GA {
         let mut chosen_one = 0;
         //从人群中选择 num_comparisons 成员进行随机测试，达到目前为止最好的发现
         for _ in 0..num_comparisons {
-            let this_try = random_usize(0, self.genomes.len() - 1);
+            let this_try = rand_usize(0, self.genomes.len() - 1);
             if self.genomes[this_try].fitness() > best_fitness_so_far {
                 chosen_one = this_try;
                 best_fitness_so_far = self.genomes[this_try].fitness();
@@ -278,7 +278,7 @@ impl GA {
         let best = if mum.fitness() == dad.fitness() {
             //如果他们有相同的适应性又有相同的长度，则按随机方式来选择一个
             if mum.num_genes() == dad.num_genes() {
-                match random_int(0, 1) {
+                match rand_int(0, 1) {
                     0 | 1 => ParentType::Mum,
                     _ => ParentType::Mum,
                 }
@@ -350,7 +350,7 @@ impl GA {
             //如果爸爸妈妈的创新号一样
             else if cur_dad.unwrap().innovation_id() == cur_mum.unwrap().innovation_id() {
                 //爸爸、妈妈二者都取出基因
-                if random_float() < 0.5 {
+                if random() < 0.5 {
                     selected_gene = cur_mum;
                 } else {
                     selected_gene = cur_dad;

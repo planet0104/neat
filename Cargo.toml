@@ -1,11 +1,17 @@
 [package]
 name = "neat"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["planet0104 <planet0104@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+
+[target.'cfg(not(any(target_arch = "asmjs", target_arch = "wasm32")))'.dependencies]
 rand = "0.6.5"
+
+[target.'cfg(any(target_arch = "asmjs", target_arch = "wasm32"))'.dependencies]
+wasm-bindgen = "*"
+stdweb = "0.4.17"
 
 [dependencies.image]
 version = "0.21.1"

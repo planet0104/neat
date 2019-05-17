@@ -195,16 +195,17 @@ impl NeuralNet {
         &mut self,
         width: u32,
         height: u32,
-        _border: u32,
+        border: u32,
     ) -> RgbaImage{
         use imageproc::drawing::{draw_filled_circle_mut, draw_line_segment_mut};
         use image::Rgba;
+        // use imageproc::rect::Rect;
         //最大线厚度
         let max_thickness = 6.0;
         tidy_x_splits(&mut self.neurons);
         //遍历神经元并分配x / y坐标
-        let span_x = 0.0;
-        let span_y = 0.0;
+        let span_x = width as f64;
+        let span_y = (height - (2 * border)) as f64;
         for neuron in &mut self.neurons {
             neuron.pos_x = (span_x * neuron.split_x) as i32;
             // neuron.pos_y = (top - border) - (span_y as f64 * neuron.split_y) as i32;
@@ -212,6 +213,7 @@ impl NeuralNet {
         }
 
         let mut image = RgbaImage::new(width, height);
+        // draw_filled_rect_mut(&mut image, Rect::at(0, 0).of_size(width, height), Rgba([255, 0, 0, 50]));
 
         //创建一些笔和画笔来绘制
         let color_green = Rgba([0, 200, 0, 255]);
@@ -290,7 +292,7 @@ impl NeuralNet {
         for neuron in &self.neurons {
             let x = neuron.pos_x as f64;
             let y = neuron.pos_y as f64;
-            draw_filled_circle_mut(&mut image, (x as i32, y as i32), rad_neuron as i32, Rgba([255, 0, 0, 255]));
+            draw_filled_circle_mut(&mut image, (x as i32, y as i32+(border as i32/2)), rad_neuron as i32, Rgba([255, 0, 0, 255]));
         }
 
         image

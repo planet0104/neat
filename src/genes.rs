@@ -1,5 +1,5 @@
 use super::phenotype::{Link, NeuralNet, Neuron};
-use super::utils::{random_clamped_f64, random_float, random_int, random_usize, sqrt_usize};
+use super::utils::{random_clamped, random, rand_int, rand_usize, sqrt_usize};
 use std::cmp::Ordering;
 //-------------------------------------------------------//
 //---链接基因---------------------------------------------//
@@ -434,7 +434,7 @@ impl Genome {
                     gen.neurons[inputs + j + 1].id,
                     true,
                     (inputs + outputs + 1 + num_genes) as i32,
-                    random_clamped_f64(),
+                    random_clamped(),
                 ));
                 num_genes += 1;
             }
@@ -553,7 +553,7 @@ impl Genome {
         mut num_trys_to_add_link: i32,
     ) {
         //根据突变率来确定是否立即返回
-        if random_float() > mutation_rate {
+        if (random() as f32) > mutation_rate {
             return;
         }
 
@@ -563,13 +563,13 @@ impl Genome {
         //如果选择加入循环连接，则次标志为true
         let mut recurrent = false;
         //首先检查需要创建的连接是否返回到同一个神经细胞本身
-        if random_float() < chance_of_lopped {
+        if (random() as f32) < chance_of_lopped {
             //如果是，则重复实验 num_trys_to_find_loop次,寻找一个既不是输入也不是偏移
             //且没有一个环形自反连接的神经细胞
             while num_trys_to_find_loop > 0 {
                 num_trys_to_find_loop -= 1;
                 //任取一个神经细胞
-                let neuron_pos = random_usize(self.num_inputs + 1, self.neurons.len() - 1);
+                let neuron_pos = rand_usize(self.num_inputs + 1, self.neurons.len() - 1);
 
                 //做检查以确保神经细胞没有自反连接，也不是一个输入或偏移神经细胞
                 if !self.neurons[neuron_pos].recurrent {
@@ -590,8 +590,8 @@ impl Genome {
             while num_trys_to_add_link > 0 {
                 num_trys_to_add_link -= 1;
                 //选择两个神经细胞, 第二个不能是输入或偏移神经细胞
-                id_neuron1 = self.neurons[random_int(0, self.neurons.len() as i32 - 1) as usize].id;
-                id_neuron2 = self.neurons[random_int(
+                id_neuron1 = self.neurons[rand_int(0, self.neurons.len() as i32 - 1) as usize].id;
+                id_neuron2 = self.neurons[rand_int(
                     self.num_inputs as i32 + 1,
                     self.neurons.len() as i32 - 1,
                 ) as usize]
@@ -633,7 +633,7 @@ impl Genome {
                 id_neuron1,
                 true,
                 id,
-                random_clamped_f64(),
+                random_clamped(),
                 recurrent,
             );
             self.links.push(new_gene);
@@ -644,7 +644,7 @@ impl Genome {
                 id_neuron2,
                 true,
                 id,
-                random_clamped_f64(),
+                random_clamped(),
                 recurrent,
             );
             self.links.push(new_gene);
@@ -659,7 +659,7 @@ impl Genome {
         mut num_trys_to_find_old_link: i32,
     ) {
         //根据突变率来确定是否返回
-        if random_float() > mutation_rate {
+        if (random() as f32) > mutation_rate {
             return;
         }
         //如果找到了要插入的新神经细胞的有效连接，则此值将设置为true
@@ -673,7 +673,7 @@ impl Genome {
             while num_trys_to_find_old_link > 0 {
                 num_trys_to_find_old_link -= 1;
                 //在基因组中选择一个相对于原有连接有偏移的较早的连接
-                chosen_link = random_int(
+                chosen_link = rand_int(
                     0,
                     self.num_genes() as i32 - 1 - sqrt_usize(&self.num_genes()) as i32,
                 ) as usize;
@@ -695,7 +695,7 @@ impl Genome {
         } else {
             //基因组具有足够尺寸去接受任何连接
             while !done {
-                chosen_link = random_usize(0, self.num_genes() - 1);
+                chosen_link = rand_usize(0, self.num_genes() - 1);
                 //保证该连接已被enabled并且它不是一个返回连接或带有偏移输入
                 let from_neuron = self.links[chosen_link].from_neuron;
                 if self.links[chosen_link].enabled
@@ -815,14 +815,14 @@ impl Genome {
     pub fn mutate_weights(&mut self, mut_rate: f32, pro_new_mut: f32, max_pertubation: f64) {
         for gen in &mut self.links {
             //我们突变这个基因吗？
-            if random_float() < mut_rate {
+            if (random() as f32) < mut_rate {
                 //我们将权重改为全新的权重吗？
-                if random_float() < pro_new_mut {
+                if (random() as f32) < pro_new_mut {
                     //使用'type'定义的随机分布来改变权重
-                    gen.weight = random_clamped_f64();
+                    gen.weight = random_clamped();
                 } else {
                     //扰乱权重
-                    gen.weight += random_clamped_f64() * max_pertubation;
+                    gen.weight += random_clamped() * max_pertubation;
                 }
             }
         }
@@ -831,8 +831,8 @@ impl Genome {
     //干扰神经细胞的激励响应
     pub fn mutate_activation_response(&mut self, mut_rate: f32, max_pertubation: f64) {
         for gen in &mut self.neurons {
-            if random_float() < mut_rate {
-                gen.activation_response += random_clamped_f64() * max_pertubation;
+            if (random() as f32) < mut_rate {
+                gen.activation_response += random_clamped() * max_pertubation;
             }
         }
     }

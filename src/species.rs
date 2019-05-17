@@ -1,6 +1,6 @@
 use super::genes::Genome;
 use super::params;
-use super::utils::random_usize;
+use super::utils::rand_usize;
 use std::cmp::Ordering;
 //持有给定物种的所有基因组
 pub struct Species {
@@ -89,7 +89,7 @@ impl Species {
             return genomes[self.members[0]].clone();
         } else {
             let max_index_size = (params::SURVIVAL_RATE * self.members.len() as f64) as usize + 1;
-            let the_one = random_usize(0, max_index_size);
+            let the_one = rand_usize(0, max_index_size);
             return genomes[self.members[the_one]].clone();
         }
     }
