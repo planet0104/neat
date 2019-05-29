@@ -1,5 +1,5 @@
 use super::phenotype::{Link, NeuralNet, Neuron};
-use super::utils::{random_clamped, random, rand_int, rand_usize, sqrt_usize};
+use super::utils::{rand_int, rand_usize, random, random_clamped, sqrt_usize};
 use std::cmp::Ordering;
 //-------------------------------------------------------//
 //---链接基因---------------------------------------------//
@@ -591,10 +591,8 @@ impl Genome {
                 num_trys_to_add_link -= 1;
                 //选择两个神经细胞, 第二个不能是输入或偏移神经细胞
                 id_neuron1 = self.neurons[rand_int(0, self.neurons.len() as i32 - 1) as usize].id;
-                id_neuron2 = self.neurons[rand_int(
-                    self.num_inputs as i32 + 1,
-                    self.neurons.len() as i32 - 1,
-                ) as usize]
+                id_neuron2 = self.neurons
+                    [rand_int(self.num_inputs as i32 + 1, self.neurons.len() as i32 - 1) as usize]
                     .id;
                 if id_neuron2 == 2 {
                     //????

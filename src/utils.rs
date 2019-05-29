@@ -8,12 +8,12 @@
 // }
 
 #[cfg(not(any(target_arch = "asmjs", target_arch = "wasm32")))]
-pub fn random() -> f64{
+pub fn random() -> f64 {
     rand::random::<f64>()
 }
 
 #[cfg(any(target_arch = "asmjs", target_arch = "wasm32"))]
-pub fn random() -> f64{
+pub fn random() -> f64 {
     use stdweb::unstable::TryInto;
     return js! {return Math.random();}.try_into().unwrap();
 }
@@ -32,11 +32,11 @@ pub fn random_clamped() -> f64 {
 }
 
 pub fn rand_int(l: i32, b: i32) -> i32 {
-	(random()*(b as f64 - l as f64 + 1.0)).floor() as i32 + l
+    (random() * (b as f64 - l as f64 + 1.0)).floor() as i32 + l
 }
 
 pub fn rand_usize(l: usize, b: usize) -> usize {
-	(random()*(b as f64 - l as f64 + 1.0)).floor() as usize + l
+    (random() * (b as f64 - l as f64 + 1.0)).floor() as usize + l
 }
 
 // pub fn random_float_64() -> f64 {
@@ -49,7 +49,7 @@ pub fn rand_usize(l: usize, b: usize) -> usize {
 //     }
 //     //返回[low, high)区间的数
 //     //println!("low={},high={}", low, high);
-    
+
 //     rand::thread_rng().gen_range(low, high + 1)
 // }
 //返回[low, low] 区间的数

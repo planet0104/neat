@@ -1,28 +1,15 @@
 [package]
 name = "neat"
-version = "1.0.1"
+version = "1.0.2"
 authors = ["planet0104 <planet0104@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+svg = "0.5.12"
 
 [target.'cfg(not(any(target_arch = "asmjs", target_arch = "wasm32")))'.dependencies]
 rand = "0.6.5"
 
 [target.'cfg(any(target_arch = "asmjs", target_arch = "wasm32"))'.dependencies]
-wasm-bindgen = "*"
+wasm-bindgen = "0.2.45"
 stdweb = "0.4.17"
-
-[dependencies.image]
-version = "0.21.1"
-default-features = false
-optional = true
-
-[dependencies.imageproc]
-version = "0.18.0"
-default-features = false
-optional = true
-
-[features]
-default = ["draw_net"]
-draw_net = ["image", "imageproc"]

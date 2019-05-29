@@ -1,8 +1,8 @@
 // Desc：创建神经网络所需的定义。
 use super::genes::NeuronType;
 use super::utils::clamp;
-#[cfg(feature = "draw_net")]
-use image::RgbaImage;
+use svg::node::element::{Circle, Line};
+use svg::Document;
 
 #[derive(Clone, Debug)]
 pub struct Link {
@@ -185,21 +185,16 @@ impl NeuralNet {
 
     /// 绘制网络的图形
     /// # Arguments
-    /// 
+    ///
     /// * `width` 宽
     /// * `height` 高
     /// * `border` 边框宽度
-    /// 
-    #[cfg(feature = "draw_net")]
-    pub fn draw_net(
-        &mut self,
-        width: u32,
-        height: u32,
-        border: u32,
-    ) -> RgbaImage{
-        use imageproc::drawing::{draw_filled_circle_mut, draw_line_segment_mut};
-        use image::Rgba;
-        // use imageproc::rect::Rect;
+    ///
+    pub fn draw_net(&mut self, width: u32, height: u32, border: u32) -> String {
+        let mut document = Document::new()
+            .set("viewBox", (0, 0, width, height))
+            .set("width", width)
+            .set("height", height);
         //最大线厚度
         let max_thickness = 6.0;
         tidy_x_splits(&mut self.neurons);
@@ -212,11 +207,8 @@ impl NeuralNet {
             neuron.pos_y = (span_y * neuron.split_y) as i32;
         }
 
-        let mut image = RgbaImage::new(width, height);
-        // draw_filled_rect_mut(&mut image, Rect::at(0, 0).of_size(width, height), Rgba([255, 0, 0, 50]));
-
         //创建一些笔和画笔来绘制
-        let color_green = Rgba([0, 200, 0, 255]);
+        let color_green = [0, 200, 0];
 
         //神经元的半径
         let rad_neuron = span_x as f64 / 40.0; //span_x as f64 / 60.0
@@ -225,15 +217,15 @@ impl NeuralNet {
         //现在我们有一个X，Y的pos，我们可以得到绘图的每一个神经元。 首先通过网络中的每个神经元绘制链接
         for neuron in &self.neurons {
             //抓取这个神经元位置作为每个连接的起始位置
-            let start_x = neuron.pos_x as f32;
-            let start_y = neuron.pos_y as f32;
+            let start_x = neuron.pos_x;
+            let start_y = neuron.pos_y;
 
             //这是一个偏见神经元吗？ 如果是，请将链接绘制成绿色
             let bias = neuron.neuron_type == NeuronType::Bias;
             //现在遍历每个传出的链接来获取终点
             for lnk in &neuron.links_out {
-                let end_x = self.neurons[lnk.out].pos_x as f32;
-                let end_y = self.neurons[lnk.out].pos_y as f32;
+                let end_x = self.neurons[lnk.out].pos_x;
+                let end_y = self.neurons[lnk.out].pos_y;
 
                 //如果链接向前画一条直线
                 if !lnk.recurrent && !bias {
@@ -241,19 +233,29 @@ impl NeuralNet {
                     clamp(&mut thickness, 0.0, max_thickness);
                     let color = if lnk.weight <= 0.0 {
                         //创建一个用于抑制重量的黄色笔
-                        Rgba([240, 230, 170, ((thickness/max_thickness)*255.0) as u8])
+                        [240, 230, 170]
                     } else {
                         //灰色或兴奋
-                        Rgba([200, 200, 200, ((thickness/max_thickness)*255.0) as u8])
+                        [200, 200, 200]
                     };
 
                     //绘制连接
-                    draw_line_segment_mut(&mut image, (start_x, start_y), (end_x, end_y), color);
+                    document = svg_draw_line(
+                        document,
+                        (start_x, start_y),
+                        (end_x, end_y),
+                        &color,
+                        thickness as i32,
+                    );
                 } else if !lnk.recurrent && bias {
                     //绘制连接
-                    let mut color = color_green.clone();
-                    color[3] = ((2.0/max_thickness)*255.0) as u8;//2像素宽度 对应的透明度
-                    draw_line_segment_mut(&mut image, (start_x, start_y), (end_x, end_y), color);
+                    document = svg_draw_line(
+                        document,
+                        (start_x, start_y),
+                        (end_x, end_y),
+                        &color_green,
+                        1,
+                    );
                 } else {
                     //循环链接绘制为红色
                     if start_x == end_x && start_y == end_y {
@@ -261,28 +263,35 @@ impl NeuralNet {
                         clamp(&mut thickness, 0.0, max_thickness);
                         let color = if lnk.weight <= 0.0 {
                             //蓝色为抑制
-                            Rgba([0, 0, 255, 255])
+                            [0, 0, 255]
                         } else {
                             //红色为兴奋
-                            Rgba([255, 0, 0, 255])
+                            [255, 0, 0]
                         };
 
                         //我们有一个递归链接到相同的神经元绘制一个椭圆
                         let x = neuron.pos_x as f64;
                         let y = neuron.pos_y as f64 - (1.5 * rad_neuron);
-                        draw_filled_circle_mut(&mut image, (x as i32, y as i32), rad_link as i32, color);
+                        document =
+                            svg_fille_circle(document, x as i32, y as i32, rad_link as i32, &color);
                     } else {
                         let mut thickness = lnk.weight.abs() as f32;
                         clamp(&mut thickness, 0.0, max_thickness);
                         let color = if lnk.weight <= 0.0 {
                             //蓝色为抑制
-                            Rgba([0, 0, 255, ((2.0/max_thickness)*255.0) as u8])
+                            [0, 0, 255]
                         } else {
                             //红色为兴奋
-                            Rgba([255, 0, 0, ((2.0/max_thickness)*255.0) as u8])
+                            [255, 0, 0]
                         };
                         //绘制连接
-                        draw_line_segment_mut(&mut image, (start_x, start_y), (end_x, end_y), color);
+                        document = svg_draw_line(
+                            document,
+                            (start_x, start_y),
+                            (end_x, end_y),
+                            &color,
+                            thickness as i32,
+                        );
                     }
                 }
             }
@@ -290,12 +299,18 @@ impl NeuralNet {
 
         //现在绘制神经元及其ID
         for neuron in &self.neurons {
-            let x = neuron.pos_x as f64;
-            let y = neuron.pos_y as f64;
-            draw_filled_circle_mut(&mut image, (x as i32, y as i32+(border as i32/2)), rad_neuron as i32, Rgba([255, 0, 0, 255]));
+            let x = neuron.pos_x;
+            let y = neuron.pos_y;
+            document = svg_fille_circle(
+                document,
+                x,
+                y + (border as i32 / 2),
+                rad_neuron as i32,
+                &[255, 0, 0],
+            );
         }
 
-        image
+        document.to_string()
     }
 }
 
@@ -343,4 +358,36 @@ fn tidy_x_splits(neurons: &mut Vec<Neuron>) {
             }
         }
     } //下一个要检查的神经元
+}
+
+fn svg_fille_circle(document: Document, cx: i32, cy: i32, r: i32, color: &[u8; 3]) -> Document {
+    // <circle cx="100" cy="50" r="40" stroke="black" stroke-width="2" fill="red"/>
+    document.add(Circle::new().set("cx", cx).set("cy", cy).set("r", r).set(
+        "fill",
+        format!("rgb({},{},{})", color[0], color[1], color[2]),
+    ))
+}
+
+fn svg_draw_line(
+    document: Document,
+    start: (i32, i32),
+    end: (i32, i32),
+    color: &[u8; 3],
+    stroke_width: i32,
+) -> Document {
+    //<line x1="0" y1="0" x2="300" y2="300" style="stroke:rgb(99,99,99);stroke-width:2"/>
+    document.add(
+        Line::new()
+            .set("x1", start.0)
+            .set("y1", start.1)
+            .set("x2", end.0)
+            .set("y2", end.1)
+            .set(
+                "style",
+                format!(
+                    "stroke:rgb({},{},{});stroke-width:{}",
+                    color[0], color[1], color[2], stroke_width
+                ),
+            ),
+    )
 }

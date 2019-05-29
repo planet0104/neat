@@ -2,7 +2,7 @@ use super::genes::{Genome, Innovation, LinkGene, NeuronGene};
 use super::params;
 use super::phenotype::NeuralNet;
 use super::species::Species;
-use super::utils::{random, rand_int, rand_usize};
+use super::utils::{rand_int, rand_usize, random};
 
 // Desc：用于实现的进化算法类
 pub struct GA {
