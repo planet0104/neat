@@ -1,10 +1,15 @@
+use serde::{Serialize, Deserialize};
 use super::genes::{Genome, Innovation, LinkGene, NeuronGene};
 use super::params;
 use super::phenotype::NeuralNet;
 use super::species::Species;
 use super::utils::{rand_int, rand_usize, random};
+use std::fs::File;
+use std::io::prelude::*;
+use std::io::{Result, Error, ErrorKind};
 
 // Desc：用于实现的进化算法类
+#[derive(Serialize, Deserialize)]
 pub struct GA {
     genomes: Vec<Genome>,
     //保留最后一代最佳基因组的记录。 （用于在用户按下“B”键时将显示效果最佳）
@@ -25,6 +30,7 @@ pub struct GA {
     //这是预先计算的分割深度。 它们用于计算渲染的神经元x/y位置，并用于计算当“表现型”工作在“快照”模式时网络的刷新深度。
     splits: Vec<SplitDepth>,
     fitness_scores: Vec<f64>, //用来临时存储人口的适应分
+    settings: super::Settings,
 }
 
 #[derive(Debug, PartialEq)]
@@ -34,6 +40,7 @@ enum ParentType {
 }
 
 //该结构用于创建网络深度查找表。
+#[derive(Serialize, Deserialize)]
 struct SplitDepth {
     val: f64,
     depth: i32,
@@ -61,7 +68,7 @@ impl GA {
         let mut splits: Vec<SplitDepth> = vec![];
         GA::split(&mut splits, 0.0, 1.0, 0);
 
-        GA {
+        let mut ga = GA {
             pop_size: size,
             generation: 0,
             innovation: innovation,
@@ -77,7 +84,14 @@ impl GA {
             splits: splits,
             fitness_scores: vec![0.0; size as usize],
             average_fitness: 0.0,
-        }
+            settings: super::Settings::default(),
+        };
+        ga.create_phenotypes();
+        ga
+    }
+
+    pub fn settings(&mut self) -> &mut super::Settings {
+        &mut self.settings
     }
 
     pub fn epoch(&mut self) {
@@ -133,7 +147,7 @@ impl GA {
                             //如果大于1，则可以使用杂交操作
                             //孵化1
                             let g1 = self.species[spc].spawn(&self.genomes);
-                            if (random() as f32) < params::CROSSOVER_RATE {
+                            if (random() as f32) < self.settings.crossover_rate {
                                 //孵化2, 保证它不是g1
                                 let mut g2 = self.species[spc].spawn(&self.genomes);
                                 let mut num_attempts = 5;
@@ -171,7 +185,7 @@ impl GA {
                         );
                         //对权重实行突变
                         baby.mutate_weights(
-                            params::MUTATION_RATE,
+                            self.settings.mutation_rate,
                             params::PROBABILITY_WEIGHT_REPLACED,
                             params::MAX_WEIGHT_PERTURBATION,
                         );
@@ -602,4 +616,39 @@ impl GA {
     //         ui::text_out(surface, 5, top - 20, &"物种分配栏:");
     //     }
     // }
+
+    pub fn serialize(&self) -> bincode::Result<Vec<u8>>{
+        bincode::serialize(self)
+    }
+
+    pub fn save_to_file(&self, file_name:&str) -> Result<()>{
+        match self.serialize(){
+            Ok(encoded) => {
+                let mut file = File::create(file_name)?;
+                file.write_all(&encoded)
+            }
+            Err(err) => {
+                Err(Error::new(ErrorKind::Other, format!("{:?}", err)))
+            }
+        }
+    }
+
+    pub fn load_from_file(file_name:&str) -> Result<GA>{
+        let mut file = File::open(file_name)?;
+        let mut file_data = vec![];
+        let _len = file.read_to_end(&mut file_data)?;
+
+        match GA::deserialize(&file_data){
+            Ok(ga) => {
+                Ok(ga)
+            }
+            Err(err) => {
+                Err(Error::new(ErrorKind::Other, format!("{:?}", err)))
+            }
+        }
+    }
+
+    pub fn deserialize(encoded:&[u8]) -> bincode::Result<GA>{
+        bincode::deserialize(encoded)
+    }
 }

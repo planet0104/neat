@@ -6,10 +6,13 @@ edition = "2018"
 
 [dependencies]
 svg = "0.5.12"
+serde = { version="1.0.98", features=["derive"] }
+bincode = "1.1.4"
+crossbeam-utils = "0.6.6"
+num_cpus = "1.10.1"
 
-[target.'cfg(not(any(target_arch = "asmjs", target_arch = "wasm32")))'.dependencies]
+[target.'cfg(not(all(target_arch="wasm32", target_os="unknown")))'.dependencies]
 rand = "0.6.5"
 
-[target.'cfg(any(target_arch = "asmjs", target_arch = "wasm32"))'.dependencies]
-wasm-bindgen = "0.2.45"
+[target.'cfg(all(target_arch="wasm32", target_os="unknown"))'.dependencies]
 stdweb = "0.4.17"

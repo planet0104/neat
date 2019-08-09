@@ -1,10 +1,14 @@
 // Desc：创建神经网络所需的定义。
+use serde::{Serialize, Deserialize};
 use super::genes::NeuronType;
 use super::utils::clamp;
 use svg::node::element::{Circle, Line};
 use svg::Document;
+use std::fs::File;
+use std::io::prelude::*;
+use std::io::{Result, Error, ErrorKind};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Link {
     //指向与本link相连接的两个神经细胞的指针
     _in: usize, //neuron_index
@@ -28,7 +32,7 @@ impl Link {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Neuron {
     //所有链接进入这个神经元
     links_in: Vec<Link>,
@@ -82,9 +86,13 @@ impl Neuron {
     pub fn links_in(&mut self) -> &mut Vec<Link> {
         &mut self.links_in
     }
+
+    pub fn neuron_type(&self) -> &NeuronType{
+        &self.neuron_type
+    }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct NeuralNet {
     neurons: Vec<Neuron>,
     //网络深度
@@ -117,6 +125,51 @@ impl NeuralNet {
         NeuralNet {
             neurons: neurons,
             depth: depth,
+        }
+    }
+
+    pub fn neurons(&self) -> &[Neuron]{
+        self.neurons.as_slice()
+    }
+
+    pub fn serialize(&self) -> bincode::Result<Vec<u8>>{
+        bincode::serialize(self)
+    }
+
+    pub fn deserialize(encoded:&[u8]) -> bincode::Result<NeuralNet>{
+        bincode::deserialize(encoded)
+    }
+
+    pub fn save_to_file(&self, file_name:&str) -> Result<()>{
+        match self.serialize(){
+            Ok(encoded) => {
+                let mut file = File::create(file_name)?;
+                file.write_all(&encoded)
+            }
+            Err(err) => {
+                Err(Error::new(ErrorKind::Other, format!("{:?}", err)))
+            }
+        }
+    }
+
+    pub fn save_svg_image(&mut self, width: u32, height: u32, border: u32, neuron_rad:Option<u32>, file_name:&str) -> Result<()>{
+        let net_img = self.draw_net(width, height, border, neuron_rad);
+        let mut file = File::create(file_name)?;
+        file.write_all(net_img.as_bytes())
+    }
+
+    pub fn load_from_file(file_name:&str) -> Result<NeuralNet>{
+        let mut file = File::open(file_name)?;
+        let mut file_data = vec![];
+        let _len = file.read_to_end(&mut file_data)?;
+
+        match NeuralNet::deserialize(&file_data){
+            Ok(ga) => {
+                Ok(ga)
+            }
+            Err(err) => {
+                Err(Error::new(ErrorKind::Other, format!("{:?}", err)))
+            }
         }
     }
 
@@ -190,13 +243,13 @@ impl NeuralNet {
     /// * `height` 高
     /// * `border` 边框宽度
     ///
-    pub fn draw_net(&mut self, width: u32, height: u32, border: u32) -> String {
+    pub fn draw_net(&mut self, width: u32, height: u32, border: u32, neuron_rad:Option<u32>) -> String {
         let mut document = Document::new()
             .set("viewBox", (0, 0, width, height))
             .set("width", width)
             .set("height", height);
         //最大线厚度
-        let max_thickness = 6.0;
+        let max_thickness = 10.0;
         tidy_x_splits(&mut self.neurons);
         //遍历神经元并分配x / y坐标
         let span_x = width as f64;
@@ -210,8 +263,23 @@ impl NeuralNet {
         //创建一些笔和画笔来绘制
         let color_green = [0, 200, 0];
 
-        //神经元的半径
-        let rad_neuron = span_x as f64 / 40.0; //span_x as f64 / 60.0
+        //神经元的半径 / 根据输入神经元个数计算半径
+        let mut input_count = 0;
+        for neuron in &self.neurons{
+            if neuron.neuron_type == NeuronType::Input{
+                input_count += 1;
+            }
+        }
+        
+        let rad_neuron = if let Some(neuron_rad) = neuron_rad{
+            neuron_rad as f64
+        }else{
+            let mut neuron_rad = span_x as f64 / (input_count as f64)/3.; //span_x as f64 / 60.0
+            if neuron_rad<1.0{
+                neuron_rad = 1.0;
+            }
+            neuron_rad
+        };
         let rad_link = rad_neuron as f64 * 1.5;
 
         //现在我们有一个X，Y的pos，我们可以得到绘图的每一个神经元。 首先通过网络中的每个神经元绘制链接

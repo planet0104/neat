@@ -1,10 +1,11 @@
+use serde::{Serialize, Deserialize};
 use super::phenotype::{Link, NeuralNet, Neuron};
 use super::utils::{rand_int, rand_usize, random, random_clamped, sqrt_usize};
 use std::cmp::Ordering;
 //-------------------------------------------------------//
 //---链接基因---------------------------------------------//
 //-------------------------------------------------------//
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct LinkGene {
     //链接的两个神经细胞标识
     from_neuron: i32,
@@ -88,7 +89,7 @@ impl Eq for LinkGene {}
 //-------------------------------------------------------//
 //-------------------------------------------------------//
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum NeuronType {
     Input,
     Hidden,
@@ -100,7 +101,7 @@ pub enum NeuronType {
 //-------------------------------------------------------//
 //---神经细胞---------------------------------------------//
 //-------------------------------------------------------//
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct NeuronGene {
     //它的标识码
     id: i32,
@@ -133,16 +134,21 @@ impl NeuronGene {
             activation_response: 1.0,
         }
     }
+
+    pub fn neuron_type(&self) -> &NeuronType{
+        &self.neuron_type
+    }
 }
 
 //-------------------------------------------------------//
 //-------------------------------------------------------//
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum InnovationType {
     NewNeuron,
     NewLink,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct SInnovation {
     //新类型还是新连接?
     innovation_type: InnovationType,
@@ -212,6 +218,7 @@ impl SInnovation {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Innovation {
     innovs: Vec<SInnovation>,
     next_neuron_id: i32,
@@ -343,7 +350,7 @@ impl Innovation {
 //-------------------------------------------------------//
 //---基因组-----------------------------------------------//
 //-------------------------------------------------------//
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Genome {
     //它的标识
     genome_id: i32,

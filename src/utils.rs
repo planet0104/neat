@@ -7,15 +7,29 @@
 //     file.read_to_string(content).unwrap();
 // }
 
-#[cfg(not(any(target_arch = "asmjs", target_arch = "wasm32")))]
+#[cfg(not(all(target_arch="wasm32", target_os="unknown")))]
 pub fn random() -> f64 {
     rand::random::<f64>()
 }
 
-#[cfg(any(target_arch = "asmjs", target_arch = "wasm32"))]
+#[cfg(all(target_arch="wasm32", target_os="unknown"))]
 pub fn random() -> f64 {
     use stdweb::unstable::TryInto;
-    return js! {return Math.random();}.try_into().unwrap();
+    js!(
+        var r = Math.random();
+        // console.log("random:", r);
+        return r;
+    ).try_into().unwrap()
+}
+
+#[cfg(not(all(target_arch="wasm32", target_os="unknown")))]
+pub fn log(s:&str){
+    println!("{}", s);
+}
+
+#[cfg(all(target_arch="wasm32", target_os="unknown"))]
+pub fn log(s:&str){
+    console!(log, s);
 }
 
 pub fn sqrt_usize(val: &usize) -> usize {

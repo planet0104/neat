@@ -2,7 +2,9 @@ use super::genes::Genome;
 use super::params;
 use super::utils::rand_usize;
 use std::cmp::Ordering;
+use serde::{Serialize, Deserialize};
 //持有给定物种的所有基因组
+#[derive(Serialize, Deserialize)]
 pub struct Species {
     //保留这个物种的第一个成员的本地副本
     leader: Genome,
