@@ -7,6 +7,8 @@ use super::utils::{rand_int, rand_usize, random};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{Result, Error, ErrorKind};
+use std::sync::{Mutex, Arc};
+use crossbeam_utils::thread;
 
 // Desc：用于实现的进化算法类
 #[derive(Serialize, Deserialize)]
@@ -31,6 +33,7 @@ pub struct GA {
     splits: Vec<SplitDepth>,
     fitness_scores: Vec<f64>, //用来临时存储人口的适应分
     settings: super::Settings,
+    num_cpus: usize,
 }
 
 #[derive(Debug, PartialEq)]
@@ -85,6 +88,7 @@ impl GA {
             fitness_scores: vec![0.0; size as usize],
             average_fitness: 0.0,
             settings: super::Settings::default(),
+            num_cpus: num_cpus::get(),
         };
         ga.create_phenotypes();
         ga
@@ -223,11 +227,6 @@ impl GA {
         //用新群体替代当前群体
         self.genomes = new_pop;
         //创建新的表现型
-        // for gen in 0..self.genomes.len() {
-        //     //计算最大网络深度
-        //     let depth = self.calculate_net_depth(&self.genomes[gen]);
-        //     self.genomes[gen].create_phenotype(depth);
-        // }
         self.create_phenotypes();
         //增加代数计数器
         self.generation += 1;
@@ -235,11 +234,47 @@ impl GA {
 
     //遍历人口的所有成员，并创建他们的表型。 返回一个包含指向新表型的指针的向量
     pub fn create_phenotypes(&mut self) {
-        for i in 0..self.pop_size as usize {
-            //计算最大网络深度
-            let depth = self.calculate_net_depth(&self.genomes[i]);
-            self.genomes[i].create_phenotype(depth);
+        let num_threads = self.num_cpus;
+        let phenotypes = Arc::new(Mutex::new(vec![None; self.pop_size as usize]));
+        let pop_size = self.pop_size as usize;
+        let thunk = pop_size/num_threads;
+        let genomes = &self.genomes;
+        let splits = &self.splits;
+        thread::scope(|s| {
+            let mut start_id = 0;
+            while start_id<pop_size{
+                let phenotypes_clone = phenotypes.clone();
+                s.spawn(move |_| {
+                    if start_id+thunk<pop_size{
+                        for i in start_id..start_id+thunk{
+                            let depth = calculate_net_depth(splits, &genomes[i]);
+                            let net = super::genes::create_phenotype(&genomes[i], depth);
+                            phenotypes_clone.lock().expect("phenotypes_clone.lock 失败")[i] = Some(net);
+                        }
+                    }else{
+                        for i in start_id..pop_size{
+                            let depth = calculate_net_depth(splits, &genomes[i]);
+                            let net = super::genes::create_phenotype(&genomes[i], depth);
+                            phenotypes_clone.lock().expect("phenotypes_clone.lock 失败")[i] = Some(net);
+                        }
+                    }
+                });
+                start_id += thunk;
+            }
+        }).expect("thread::scope 失败!");
+
+        let phenotypes:Vec<NeuralNet> = phenotypes.lock().expect("phenotypes lock() 1 失败").drain(..).map(|p| p.unwrap() ).collect();
+        let mut i = 0;
+        for p in phenotypes{
+            self.genomes[i].set_phenotype(p);
+            i += 1;
         }
+        // for i in 0..self.pop_size as usize {
+        //     //计算最大网络深度
+        //     let depth = self.calculate_net_depth(&self.genomes[i]);
+        //     let net = super::genes::create_phenotype(&self.genomes[i], depth);
+        //     self.genomes[i].set_phenotype(net);
+        // }
     }
 
     pub fn get_phenotype(&mut self, index: usize) -> &mut NeuralNet {
@@ -255,19 +290,6 @@ impl GA {
         for sp in &mut self.species {
             sp.adjust_fitnesses(&mut self.genomes);
         }
-    }
-
-    //在查找表中搜索基因组中每个节点的dSplitY值，并根据该图返回网络的深度
-    fn calculate_net_depth(&self, gen: &Genome) -> i32 {
-        let mut max_so_far = 0;
-        for nd in 0..gen.num_neurons() {
-            for sp in &self.splits {
-                if gen.split_y(nd) == sp.val && sp.depth > max_so_far {
-                    max_so_far = sp.depth;
-                }
-            }
-        }
-        max_so_far + 2
     }
 
     /** 锦标赛选择 */
@@ -468,8 +490,9 @@ impl GA {
         let mut brains: Vec<usize> = vec![];
         for gen in 0..self.best_genomes.len() {
             //计算最大网络深度
-            let depth = self.calculate_net_depth(&self.best_genomes[gen]);
-            self.best_genomes[gen].create_phenotype(depth);
+            let depth = calculate_net_depth(&self.splits, &self.best_genomes[gen]);
+            let net = super::genes::create_phenotype(&self.best_genomes[gen], depth);
+            self.best_genomes[gen].set_phenotype(net);
             brains.push(gen);
         }
         brains
@@ -651,4 +674,17 @@ impl GA {
     pub fn deserialize(encoded:&[u8]) -> bincode::Result<GA>{
         bincode::deserialize(encoded)
     }
+}
+
+//在查找表中搜索基因组中每个节点的dSplitY值，并根据该图返回网络的深度
+fn calculate_net_depth(splits:&[SplitDepth], gen: &Genome) -> i32 {
+    let mut max_so_far = 0;
+    for nd in 0..gen.num_neurons() {
+        for sp in splits {
+            if gen.split_y(nd) == sp.val && sp.depth > max_so_far {
+                max_so_far = sp.depth;
+            }
+        }
+    }
+    max_so_far + 2
 }

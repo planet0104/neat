@@ -472,72 +472,16 @@ impl Genome {
         }
     }
 
-    //复制
-    // pub fn from(g:&Genome) ->Genome{
-
-    // }
-
     pub fn split_y(&self, val: i32) -> f64 {
         self.neurons[val as usize].split_y as f64
     }
 
-    //=号重载
-    //由基因组创建神经网络
-    pub fn create_phenotype(&mut self, depth: i32) {
-        //首先应确保删除该基因组原来存在得表现型
-        self.delete_phenotype();
-
-        //用于保存表现型所要求的所有神经细胞
-        let mut neurons: Vec<Neuron> = vec![];
-        //创建所有要求的神经细胞
-        //这里有可能neurons是反向的，即input在最后，这种情况要反过来创建，确保Input类型的基因在前边
-        if self.neurons[0].neuron_type == NeuronType::Input {
-            for n in &self.neurons {
-                neurons.push(Neuron::new(
-                    n.neuron_type.clone(),
-                    n.id,
-                    n.split_y as f64,
-                    n.split_x as f64,
-                    n.activation_response,
-                ));
-            }
-        } else {
-            for n in 0..self.neurons.len() {
-                neurons.push(Neuron::new(
-                    self.neurons[self.neurons.len() - 1 - n].neuron_type.clone(),
-                    self.neurons[self.neurons.len() - 1 - n].id,
-                    self.neurons[self.neurons.len() - 1 - n].split_y as f64,
-                    self.neurons[self.neurons.len() - 1 - n].split_x as f64,
-                    self.neurons[self.neurons.len() - 1 - n].activation_response,
-                ));
-            }
-        }
-
-        //println!("neurons.len={}", neurons.len());
-
-        //再创建链接
-        for lnk in &self.links {
-            //在链接创建之前，要保证链接基因已被打开
-            if lnk.enabled {
-                //产生指向有关的各个神经细胞的指针
-                let from_neuron_pos = self.get_element_pos(lnk.from_neuron);
-                let to_neuron_pos = self.get_element_pos(lnk.to_neuron);
-
-                //在这两个神经细胞之间创建一个链接，并为存入的基因分配权重
-                let link = Link::new(lnk.weight, from_neuron_pos, to_neuron_pos, lnk.recurrent);
-
-                //把新的链接加入到神经细胞
-                neurons[from_neuron_pos].links_out().push(link.clone());
-                neurons[to_neuron_pos].links_in().push(link);
-            }
-        }
-
-        //每个神经细胞都已经包含了所有的链接信息，然后利用他们创建一个神经网络
-        self.phenotype = NeuralNet::new(neurons, depth);
-    }
-
     pub fn phenotype(&mut self) -> &mut NeuralNet {
         &mut self.phenotype
+    }
+
+    pub fn set_phenotype(&mut self, net: NeuralNet){
+        self.phenotype = net;
     }
 
     //删除神经网络
@@ -1025,3 +969,54 @@ impl PartialEq for Genome {
     }
 }
 impl Eq for Genome {}
+
+/// 由基因组创建神经网络
+pub fn create_phenotype(genome:&Genome, depth: i32) -> NeuralNet {
+    //用于保存表现型所要求的所有神经细胞
+    let mut neurons: Vec<Neuron> = vec![];
+    //创建所有要求的神经细胞
+    //这里有可能neurons是反向的，即input在最后，这种情况要反过来创建，确保Input类型的基因在前边
+    if genome.neurons[0].neuron_type == NeuronType::Input {
+        for n in &genome.neurons {
+            neurons.push(Neuron::new(
+                n.neuron_type.clone(),
+                n.id,
+                n.split_y as f64,
+                n.split_x as f64,
+                n.activation_response,
+            ));
+        }
+    } else {
+        for n in 0..genome.neurons.len() {
+            neurons.push(Neuron::new(
+                genome.neurons[genome.neurons.len() - 1 - n].neuron_type.clone(),
+                genome.neurons[genome.neurons.len() - 1 - n].id,
+                genome.neurons[genome.neurons.len() - 1 - n].split_y as f64,
+                genome.neurons[genome.neurons.len() - 1 - n].split_x as f64,
+                genome.neurons[genome.neurons.len() - 1 - n].activation_response,
+            ));
+        }
+    }
+
+    //println!("neurons.len={}", neurons.len());
+
+    //再创建链接
+    for lnk in &genome.links {
+        //在链接创建之前，要保证链接基因已被打开
+        if lnk.enabled {
+            //产生指向有关的各个神经细胞的指针
+            let from_neuron_pos = genome.get_element_pos(lnk.from_neuron);
+            let to_neuron_pos = genome.get_element_pos(lnk.to_neuron);
+
+            //在这两个神经细胞之间创建一个链接，并为存入的基因分配权重
+            let link = Link::new(lnk.weight, from_neuron_pos, to_neuron_pos, lnk.recurrent);
+
+            //把新的链接加入到神经细胞
+            neurons[from_neuron_pos].links_out().push(link.clone());
+            neurons[to_neuron_pos].links_in().push(link);
+        }
+    }
+
+    //每个神经细胞都已经包含了所有的链接信息，然后利用他们创建一个神经网络
+    NeuralNet::new(neurons, depth)
+}
